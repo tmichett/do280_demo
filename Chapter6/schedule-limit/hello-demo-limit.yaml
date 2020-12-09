@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: hello-demo-limit
+  name: hello-demo-limit
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hello-demo-limit
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: hello-demo-limit
+    spec:
+      containers:
+      - image: quay.io/redhattraining/hello-world-nginx:v1.0
+        name: hello-world-nginx
+        resources:
+          requests:
+            cpu: "2"
+            memory: 20Mi
+status: {}
