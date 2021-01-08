@@ -9,6 +9,6 @@
 :icons: font
 :imagesdir: images/
 
-== Configuring OpenShift Networking for Applications
+== Controlling Pod Scheduling
 
 include::./Configure_Identity_Providers.adoc[]

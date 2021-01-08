@@ -9,6 +9,6 @@
 :icons: font
 :imagesdir: images/
 
-== Configuring OpenShift Networking for Applications
+== Describing Cluster Updates
 
-include::./Configure_Identity_Providers.adoc[]
+No Demos

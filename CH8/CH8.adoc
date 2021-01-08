@@ -1,0 +1,45 @@
+:pygments-style: tango
+:source-highlighter: coderay
+:toc:
+:toclevels: 7
+:sectnums:
+:sectnumlevels: 6
+:numbered:
+:chapter-label:
+:icons: font
+:imagesdir: images/
+
+== Managing a Cluster with the Web Console
+
+
+=== Demonstration - Performing Cluster Administration
+
+
+[NOTE]
+====
+Navigate through the OCP Console. Demo creating the user on CLI and then adding it to group.
+====
+
+.Using *htpasswd* to Create User
+[source,bash]
+----
+[student@workstation ~]$ htpasswd -n -b demouser redhat
+demouser:$apr1$feiqwj33$8maGMO8V6b3ksYHQ4hH7Z.
+----
+
+
+=== Demonstration - Managing Workloads
+
+.Show locations but no real demo
+[NOTE]
+====
+Show Operators, Workloads, and Networking
+====
+
+=== Demonstration - Examining Cluster Metrics
+
+.Show differences between OCP 4.5 and OCP 4.6 Consoles
+[NOTE]
+====
+No real demo ... let students go through labs and exercise.
+====
