@@ -1,0 +1,261 @@
+:pygments-style: tango
+:source-highlighter: coderay
+:toc:
+:toclevels: 7
+:sectnums:
+:sectnumlevels: 6
+:numbered:
+:chapter-label:
+:icons: font
+:imagesdir: images/
+
+=== Demonstration - Troubleshooting OpenShift Clusters and Applications
+
+.Troubleshooting OpenShift Clusters and Applications - Demo
+=====
+
+
+.Get Demo Ready
+[TIP]
+====
+
+.Preparing Environment
+[source,bash]
+----
+[student@workstation ~]$ lab execute-troubleshoot start
+----
+
+====
+
+. Source the file for login variables
++
+.Getting Variables from OCP4 Config File
+[source,bash]
+----
+[student@workstation ~]$ source /usr/local/etc/ocp4.config
+----
+
+. Logging in as the *kubeadmin* user
++
+.Use *oc login* to login as *kubeadmin*
+[source,bash]
+----
+[student@workstation ~]$ oc login -u kubeadmin -p ${RHT_OCP4_KUBEADM_PASSWD} ${RHT_OCP4_MASTER_API}
+Login successful.
+----
+
+. Get status of Nodes
++
+.Obtaining Node status with *oc get nodes*
+[source,bash]
+----
+[student@workstation ~]$ oc get nodes
+NAME       STATUS   ROLES           AGE    VERSION
+master01   Ready    master,worker   156d   v1.18.3+012b3ec
+master02   Ready    master,worker   156d   v1.18.3+012b3ec
+master03   Ready    master,worker   156d   v1.18.3+012b3ec
+----
++
+.Getting more Output with Options
+[TIP]
+====
+You can use the "*-o wide*" option to have more information with the *oc get* directive.
+====
+
+
+. Get status of worker nodes
++
+.Obtaining CPU and Memory Status
+[source,bash]
+----
+[student@workstation ~]$  oc adm top node -l node-role.kubernetes.io/worker
+NAME       CPU(cores)   CPU%   MEMORY(bytes)   MEMORY%
+master01   929m         26%    4957Mi          33%
+master02   518m         14%    2765Mi          18%
+master03   1028m        29%    5355Mi          35%
+
+[student@workstation ~]$ oc adm top node -l node-role.kubernetes.io/master
+NAME       CPU(cores)   CPU%   MEMORY(bytes)   MEMORY%
+master01   876m         25%    4923Mi          33%
+master02   478m         13%    2730Mi          18%
+master03   793m         22%    5341Mi          35%
+----
++
+.Differences between *worker* and *master* nodes
+[NOTE]
+====
+It is important to note that containers and workloads will be running on the worker nodes, so this is the status and information that is more important.
+
+It should also be noted that in this classroom environment, the worker nodes and master nodes are running on the same system.
+====
+
+. Access an OpenShift node using *oc debug*
++
+.Using *oc debug*
+[source,bash]
+----
+[student@workstation ~]$ oc debug node/master01
+Starting pod/master01-debug ...
+To use host binaries, run `chroot /host`
+
+Pod IP: 192.168.50.10
+If you don't see a command prompt, try pressing enter.
+sh-4.2#
+sh-4.2# chroot /host
+sh-4.4#
+----
+
+. Verify *kubelet* Service
++
+.Using *systemctl* on *kubelet* Service
+[source,bash]
+----
+sh-4.4# systemctl status kubelet
+● kubelet.service - Kubernetes Kubelet
+   Loaded: loaded (/etc/systemd/system/kubelet.service; enabled; vendor preset: enable>
+  Drop-In: /etc/systemd/system/kubelet.service.d
+           └─10-default-env.conf
+   Active: active (running) since Fri 2020-07-17 16:02:11 UTC; 1 weeks 2 days ago
+  Process: 1431 ExecStartPre=/bin/rm -f /var/lib/kubelet/cpu_manager_state (code=exite>
+  Process: 1429 ExecStartPre=/bin/mkdir --parents /etc/kubernetes/manifests (code=exit>
+ Main PID: 1433 (kubelet)
+    Tasks: 31
+   Memory: 193.0M
+      CPU: 23h 49min 36.077s
+   CGroup: /system.slice/kubelet.service
+           └─1433 kubelet --config=/etc/kubernetes/kubelet.conf --bootstrap-kubeconfig
+----
+
+. Verify *CRI-O* Container Engine Service
++
+.Using *systemctl* on *cri-o* Service
+[source,bash]
+----
+sh-4.4# systemctl status cri-o
+● crio.service - Open Container Initiative Daemon
+   Loaded: loaded (/usr/lib/systemd/system/crio.service; disabled; vendor preset: disa>
+  Drop-In: /etc/systemd/system/crio.service.d
+           └─10-default-env.conf
+   Active: active (running) since Fri 2020-07-17 16:01:50 UTC; 1 weeks 2 days ago
+     Docs: https://github.com/cri-o/cri-o
+ Main PID: 1395 (crio)
+    Tasks: 26
+   Memory: 1.6G
+      CPU: 1d 8h 46min 53.538s
+   CGroup: /system.slice/crio.service
+           └─1395 /usr/bin/crio --enable-metrics=true --metrics-port=9537
+----
+
+. Verify Networking and *openvswitch*
++
+.Using *crictl* to verify pods
+[source,bash]
+----
+sh-4.4# crictl ps --name openvswitch
+CONTAINER           IMAGE                                                              CREATED             STATE               NAME                ATTEMPT             POD ID
+9137b76262ea1       388626336492720c5b7be13361f5a8dd304cb577c128313dbc6297ba29070096   10 days ago         Running             openvswitch         0                   fa8d340402734
+----
+
+. Exit from *chroot* environment and *debug* shell
++
+.Exiting *Troubleshooting Environment*
+[source,bash]
+----
+sh-4.4# exit
+exit
+sh-4.2# exit
+exit
+
+Removing debug pod ...
+----
+
+. Switch to *Troubleshooting Project*
++
+.Chaging Projects with *oc project*
+[source,bash]
+----
+[student@workstation ~]$ oc project execute-troubleshoot
+Now using project "execute-troubleshoot" on server "https://api.ocp4.example.com:6443".
+----
+
+. Check status of Pods
++
+.Use *oc get pod* to check pod status
+[source,bash]
+----
+[student@workstation ~]$ oc get pod
+NAME                    READY   STATUS             RESTARTS   AGE
+psql-657fd6dc64-hgsv8   0/1     ImagePullBackOff   0          23m
+----
+
+. Use *oc get events* to get a list of the events
++
+.Listing Events and Errors
+[source,bash]
+----
+[student@workstation ~]$ oc get events
+LAST SEEN   TYPE      REASON              OBJECT                       MESSAGE
+23m         Normal    Scheduled           pod/psql-657fd6dc64-hgsv8    Successfully assigned execute-troubleshoot/psql-657fd6dc64-hgsv8 to ocp4-7h47x-worker-0-g8dql
+22m         Normal    Pulling             pod/psql-657fd6dc64-hgsv8    Pulling image "registry.access.redhat.com/rhscl/postgresq-96-rhel7:1"
+22m         Warning   Failed              pod/psql-657fd6dc64-hgsv8    Failed to pull image "registry.access.redhat.com/rhscl/postgresq-96-rhel7:1": rpc error: code = Unknown desc = Error reading manifest 1 in registry.access.redhat.com/rhscl/postgresq-96-rhel7: name unknown: Repo not found
+----
++
+.Analyzing Failures
+[IMPORTANT]
+====
+Generally, the *oc events* can give an indication of a failure status. In this case, the issue is with pulling an image ...
+
+.Specific Error Message
+[source,bash]
+----
+pull image "registry.access.redhat.com/rhscl/postgresq-96-rhel7:1": rpc error: code = Unknown desc = Error reading manifest 1 in registry.access.redhat.com/rhscl
+----
+
+In this case, the issue is with the registry/image name as it as been misspelled.
+
+*postgresq-96-rhel7:1* is missing the *l* for *postgresql*.
+====
+
+. Fix the file by editing the deployment and then check for the new pods
++
+.Source Description
+[source,bash]
+----
+[student@workstation ~]$ oc edit deployment/psql
+deployment.apps/psql edited
+
+... output omitted ...
+
+        image: registry.access.redhat.com/rhscl/postgresql-96-rhel7:1
+
+... output omitted ...
+
+
+[student@workstation ~]$ oc get pods
+NAME                    READY   STATUS    RESTARTS   AGE
+psql-7c7b948884-cctvs   1/1     Running   0          29m
+
+----
+
+
+.Cleanup Environment
+[IMPORTANT]
+====
+
+.Cleanup
+[source,bash]
+----
+[student@workstation ~]$ lab execute-troubleshoot finish
+
+Completing Guided Exercise: Executing Troubleshooting Commands
+
+ · Delete OpenShift project 'execute-troubleshoot'.............  SUCCESS
+ · Wait for project 'execute-troubleshoot' to be gone..........  SUCCESS
+ · Remove exercise files.......................................  SUCCESS
+
+Please use start if you wish to do the exercise again.
+----
+
+====
+
+=====

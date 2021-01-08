@@ -9,4 +9,7 @@
 :icons: font
 :imagesdir: images/
 
-== Verifying Health of a Cluster
+== Verifying the Health of a Cluster
+
+include::./Troubleshooting_OCP.adoc[]
+include::./OCP_Storage.adoc[]

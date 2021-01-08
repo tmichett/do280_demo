@@ -1,0 +1,200 @@
+:pygments-style: tango
+:source-highlighter: coderay
+:toc:
+:toclevels: 7
+:sectnums:
+:sectnumlevels: 6
+:numbered:
+:chapter-label:
+:icons: font
+:imagesdir: images/
+
+=== Demonstration - OpenShift Dynamic Storage
+
+.OpenShift Dynamic Storage - Demo
+=====
+
+
+.Prepare Resources and Login
+[TIP]
+====
+Setup and prepare demo and environment.
+
+.Setting up lab environment
+[source,bash]
+----
+[student@workstation ~]$ lab install-storage start
+
+
+[student@workstation ~]$ source /usr/local/etc/ocp4.config
+----
+
+====
+
+
+. Login to the Cluster
++
+[source,bash]
+----
+[student@workstation ~]$ oc login -u kubeadmin -p ${RHT_OCP4_KUBEADM_PASSWD}
+The server uses a certificate signed by an unknown authority.
+You can bypass the certificate check, but any data you send to the server could be intercepted by others.
+Use insecure connections? (y/n): y <1>
+
+Login successful.
+
+You have access to 58 projects, the list has been suppressed. You can list all projects with 'oc projects'
+
+Using project "default".
+Welcome! See 'oc help' to get started
+----
+<1> Depending on the login state and if this is the first time logging in, it is possible that you might receive a warning about the SSL certificate check.
+
+. Create an OCP Project
++
+[source,bash]
+----
+[student@workstation ~]$ oc new-project storage-demo
+----
+
+
+. Check for Storage Classes that are available for use
++
+[source,bash]
+----
+[student@workstation ~]$  oc get storageclass
+NAME                    PROVISIONER               RECLAIMPOLICY   VOLUMEBINDINGMODE   ALLOWVOLUMEEXPANSION   AGE
+nfs-storage (default)   nfs-storage-provisioner   Delete          Immediate           false                  122d
+----
+
+. Create a Database
++
+[source,bash]
+----
+oc new-app --name db-storage-demo \
+ --docker-image registry.redhat.io/rhel8/postgresql-12:1-43 \
+ -e POSTGRESQL_USER=redhat \
+ -e POSTGRESQL_PASSWORD=redhat123 \
+ -e POSTGRESQL_DATABASE=demodb
+----
+
+. Add Storage to the Database Container
++
+[source,bash]
+----
+oc set volumes deployment/db-storage-demo \
+ --add --name db-storage --type pvc --claim-class nfs-storage \
+ --claim-mode rwo --claim-size 5Gi --mount-path /var/lib/pgsql \
+ --claim-name db-storage
+----
+
+. Verify Storage
++
+.Check PVC Creation
+[source,bash]
+----
+[student@workstation ~]$ oc get pvc
+----
++
+.Check PV Creation
+[source,bash]
+----
+[student@workstation ~]$ oc get pv -o custom-columns=NAME:.metadata.name,CLAIM:.spec.claimRef.name
+----
+
+. Populate and check data in the database and persistent volume
++
+[source,bash]
+----
+[student@workstation ~]$ ~/github/do280_demo/Chapter2/install-storage/init_data_demo.sh
+Populating characters table
+CREATE TABLE
+INSERT 0 5
+----
+
+. Verify data in the database
++
+[source,bash]
+----
+[student@workstation ~] ~/github/do280_demo/Chapter2/install-storage/check_data_demo.sh
+----
+
+. Remove active deployment and create a new one to test persistent storage
+.. Deleting *db-storage-demo* deployment
++
+[source,bash]
+----
+[student@workstation ~]$ oc delete all -l app=db-storage-demo
+service "db-storage-demo" deleted
+deployment.apps "db-storage-demo" deleted
+imagestream.image.openshift.io "db-storage-demo" deleted
+----
+.. Create a new application
++
+[source,bash]
+----
+oc new-app --name db-storage-demo2 \
+ --docker-image registry.redhat.io/rhel8/postgresql-12:1-43 \
+ -e POSTGRESQL_USER=redhat \
+ -e POSTGRESQL_PASSWORD=redhat123 \
+ -e POSTGRESQL_DATABASE=demodb
+----
+
+. Verify data doesn't exist as there are no volume claims tied to deployment
++
+[source,bash]
+----
+[student@workstation ~]$ ~/github/do280_demo/Chapter2/install-storage/check_data_demo.sh
+Checking characters table
+ERROR: 'characters' table does not exist
+----
+
+. Add persistent storage to deployment
++
+[source,bash]
+----
+[student@workstation ~]$ oc set volumes deployment/db-storage-demo2 \
+  --add --name db-storage --type pvc --mount-path /var/lib/pgsql \
+  --claim-name db-storage
+deployment.apps/db-storage-demo2 volume updated
+----
+
+. Check that data exists in Database
++
+[source,bash]
+----
+[student@workstation ~]$ ~/github/do280_demo/Chapter2/install-storage/check_data_demo.sh
+----
+
+. Perform Cleanup
++
+.Removing Application
+[source,bash]
+----
+[student@workstation ~]$ oc delete all -l app=db-storage-demo2
+service "db-storage-demo" deleted
+deployment.apps "db-storage-demo" deleted
+imagestream.image.openshift.io "db-storage-demo" deleted
+----
++
+.Removing PVC
+[source,bash]
+----
+[student@workstation ~]$ oc get pv -o custom-columns=NAME:.metadata.name,CLAIM:.spec.claimRef.name <1>
+NAME                                       CLAIM
+pvc-2630b329-b4ab-4c02-a409-127d216366d6   db-storage
+pvc-26cc804a-4ec2-4f52-b6e5-84404b4b9def   image-registry-storage
+
+[student@workstation ~]$ oc delete pvc/db-storage <2>
+persistentvolumeclaim "db-storage" deleted
+
+[student@workstation ~]$ oc get pv -o custom-columns=NAME:.metadata.name,CLAIM:.spec.claimRef.name <3>
+NAME                                       CLAIM
+pvc-26cc804a-4ec2-4f52-b6e5-84404b4b9def   image-registry-storage
+----
+<1> Look at PV Claims
+<2> Remove PV Claim created
+<3> Verify PV Claim removed
+
+
+=====

@@ -9,102 +9,233 @@
 :icons: font
 :imagesdir: images/
 
-=== Demonstration - Attaching Persistent Storage to Containers
+=== Demonstration - Configuring Identity Providers
 
-.Demonstration with Persistent Storage
+.Configuring Identity Providers - Demo
 =====
 
-The purpose of this demonstration is to provide persistent storage to a container. We will be mounting local storage to the container as the web host storage.
+Do not run the *lab auth-provider start* in home environment.
 
-. Prepare directory to host local storage and copy files
-+
-.Create a Directory
+
+.Prepare the Lab Environment for Demo
+[WARNING]
+====
+
+If running the prepare environment, it gets rid of all configured Identity Providers, not just providers configured for the lab.
+
 [source,bash]
 ----
-[student@workstation Chapter3]$ sudo mkdir /Webhosting
+[student@workstation ~]$ lab auth-provider start
+
+Checking prerequisites for Guided Exercise: Configuring Identity Providers
+
+ Verify the OpenShift cluster is running:
+ · Check master node 'ocp4-7h47x-master-0' is ready............  SUCCESS
+ · Check master node 'ocp4-7h47x-master-1' is ready............  SUCCESS
+ · Check master node 'ocp4-7h47x-master-2' is ready............  SUCCESS
+ Checking for conflicts with existing OpenShift projects:
+ · The 'auth-provider' project is absent.......................  SUCCESS
+
+Setting up the classroom for Guided Exercise: Configuring Identity Providers
+
+ Preparing the student's workstation:
+ · Download exercise files.....................................  SUCCESS
+ · Download solution files.....................................  SUCCESS
+ Restoring authentication settings to installation defaults:
+ · Remove HTPasswd secret: 'htp-secret-home'...................  SUCCESS
+ · Remove all configured Identity Providers....................  SUCCESS
+ · Remove all existing users...................................  SUCCESS
+ · Remove all existing identities..............................  SUCCESS
+
+Overall start status...........................................  SUCCESS
 ----
+
+====
+
+
+. Login to OpenShift
 +
-.Copy files to */Webhosting* directory
+.Sourcing the *ocp4.config* file and Logging Into OCP
 [source,bash]
 ----
-[student@workstation Chapter3]$ sudo cp Website/* /Webhosting
+[student@workstation ~]$ source /usr/local/etc/ocp4.config
+
+[student@workstation ~]$ oc login -u kubeadmin -p ${RHT_OCP4_KUBEADM_PASSWD} ${RHT_OCP4_MASTER_API}
+Login successful.
+
+You have access to 58 projects, the list has been suppressed. You can list all projects with 'oc projects'
+
+Using project "default"
 ----
 
-. Change ownership and set SELinux permissions on the directory and files.
+. Create a password file for use
 +
-.Set Ownership and Permissions
+.Creating the file with *htpasswd* and adding the *admin* user
 [source,bash]
 ----
-[student@workstation Chapter3]$ sudo chown -R 48:48 /Webhosting
+[student@workstation ~]$ htpasswd -c -B -b My_OCP_Users admin1 redhat
+Adding password for user admin1
 ----
 +
-.Set and Restore SELinux Contexts
-[source,bash]
-----
-[student@workstation Chapter3]$ sudo semanage fcontext -a -t container_file_t '/Webhosting(/.*)?'
-
-[student@workstation Chapter3]$ sudo restorecon -Rv /Webhosting/
-restorecon reset /Webhosting context unconfined_u:object_r:default_t:s0->unconfined_u:object_r:container_file_t:s0
-restorecon reset /Webhosting/index2.html context unconfined_u:object_r:default_t:s0->unconfined_u:object_r:container_file_t:s0
-restorecon reset /Webhosting/index3.html context unconfined_u:object_r:default_t:s0->unconfined_u:object_r:container_file_t:s0
-restorecon reset /Webhosting/index.html context unconfined_u:object_r:default_t:s0->unconfined_u:object_r:container_file_t:s0
-----
-
-. Start Apache container
-+
-.Using *podman run* to start a container with persistent storage
-[source,bash]
-----
-[student@workstation Chapter3]$ sudo podman run --name HTTPD-Demo2 -v /Webhosting:/var/www/html:Z -d redhattraining/httpd-parent:2.4
-
-Trying to pull registry.access.redhat.com/rhscl/httpd-24-rhel7:latest...Getting image source signatures
-Copying blob sha256:a03401a44180b6581a149376d6fd2d5bd85d938445fd5b5ad270e14ddde4937c
-
-... output omitted ...
-----
-
-. Show website from container
-+
-.Attempt to connect to container
-[source,bash]
-----
-[student@workstation Chapter3]$ curl http://localhost
-curl: (7) Failed connect to localhost:80; Connection refused
-----
-+
-.Network traffic not setup
+.A Note about *htpasswd* Options
 [TIP]
 ====
-At this point, there is no network connection so it is expected that we don't have any connection.
+For initially creating the file, you will use a *-c* and a *-B* option to create the file and specify _bcrypt_ as the type of encryption. Any other users and people added to the file will just have the *-b* option used.
+====
 
-In order to verify the files exist, you must open a bash shell and look for the files from the mounted directory.
-
-.Verifying Mounted Drive and Files
+. Add additional users to the password file
++
+.Using *htpasswd* to add additional users
 [source,bash]
 ----
-[student@workstation Chapter3]$ sudo podman exec -it HTTPD-Demo2 /bin/bash
-bash-4.2$ ls -alR /var/www/html
-/var/www/html:
-total 12
-drwxr-xr-x. 2 apache  apache 62 Jul 16 23:10 .
-drwxr-xr-x. 4 default root   33 Jul  1 12:43 ..
--rw-r--r--. 1 apache  apache 35 Jul 16 23:10 index.html
--rw-r--r--. 1 apache  apache 36 Jul 16 23:10 index2.html
--rw-r--r--. 1 apache  apache 36 Jul 16 23:10 index3.html
+[student@workstation ~]$ htpasswd My_OCP_Users demo1
+New password:
+Re-type new password:
+Adding password for user demo1
 ----
++
+.*htpasswd* Syntax
+[IMPORTANT]
+====
+It is important to note that the *-b* option takes the password as an argument from the command line. In environments where there is a concern with security, the password should be entered interactively.
+====
 
-.Verify *apache* Service and Website
+. Examine the user password file
++
+.Output of the *My_OCP_Users* File
 [source,bash]
 ----
-bash-4.4# curl localhost
-This is the Demo2 Index.html file.
+[student@workstation ~]$ cat My_OCP_Users
+admin:$2y$05$Cw5l91Lyiw1rj.EBcSQZZO9Z7G9Jr6CNtgPZkDqSSD41CuqduCtUy
+demo1:$apr1$nKOXYMrl$VJUJ8mDeMQmFb/XwyXh090
+----
 
-bash-4.4# curl http://localhost/index2.html
-This is the Demo2 Index2.html file.
+. Create OCP Password Identity Provider
++
+.Creation of OCP Secret Resource
+[source,bash]
+----
+[student@workstation ~]$ oc create secret generic do280-users --from-file htpasswd=My_OCP_Users -n openshift-config
+secret/do280-users created
+----
++
+.Creating an OCP Secret
+[NOTE]
+====
+In the command above, we are creating an OCP secret named *do280-users*. This is the filename that will be used as a resource to hold the authentication information for the *oauth* cluster resource.
+====
 
-bash-4.4# curl http://localhost/index3.html
-This is the Demo2 Index3.html file.
+. Give admin user permissions and a role
++
+.Use *oc adm policy* to add role to user
+[source,bash]
+----
+[student@workstation ~]$  oc adm policy add-cluster-role-to-user cluster-admin admin1
+clusterrole.rbac.authorization.k8s.io/cluster-admin added: "admin1"
+
+[student@workstation ~]$  oc adm policy add-cluster-role-to-user cluster-admin demo
+clusterrole.rbac.authorization.k8s.io/cluster-admin added: "demo"
+----
+
+. Update *HTPasswd* Identify Provider for OCP
++
+.Use *oc get* to get the resource
+[source,bash]
+----
+[student@workstation ~]$ oc get -o yaml oauth cluster > oauth.yaml
+----
++
+.Edit the Resource
+[source,bash]
+----
+[student@workstation ~]$ vim oauth.yaml
+spec:
+  identityProviders:
+  - htpasswd:
+      fileData:
+        name: do280-users
+    mappingMethod: claim
+    name: do280-idp
+    type: HTPasswd
+----
++
+.Replace the Resource
+[source,bash]
+----
+[student@workstation ~]$  oc replace -f oauth.yaml
+oauth.config.openshift.io/cluster replaced
+----
++
+.Modifying Users or Passwords
+[WARNING]
+====
+It is important to replace the secret file (resource) in OCP if new users are added or the password is updated. The old way was to do a dry-run on the CLI. This still works but generates a warning, stating you need to use *--dry-run=client*.
+
+.Modifying/Adding Users
+[source,bash]
+----
+[student@workstation ~]$ oc create secret generic do280-users --from-file htpasswd=My_OCP_Users --dry-run -o yaml | oc replace -n openshift-config -f -
+secret/do280-users replaced
 ----
 ====
++
+.OCPv4.5 Method of Updating Secrets
+[IMPORTANT]
+====
+[student@workstation ~]$ oc set data secret/do280-users \
+ --from-file htpasswd=/home/student/My_OCP_Users \
+ -n openshift-config
+====
+
+. Test the Login
++
+.Time for Resource to Update
+[CAUTION]
+====
+It should be noted that it might be possible to end up with a "Login failed" message. This is generally because the authorization pods haven't fully updated.
+
+[source,bash]
+----
+[student@workstation ~]$ oc login -u admin1 https://api.ocp4.example.com:6443
+Authentication required for https://api.ocp4.example.com:6443 (openshift)
+Username: admin1
+Password:
+Login failed (401 Unauthorized)
+Verify you have provided correct credentials.
+
+[student@workstation ~]$ oc login -u admin1 https://api.ocp4.example.com:6443
+Authentication required for https://api.ocp4.example.com:6443 (openshift)
+Username: admin1
+Password:
+Login successful.
+----
+
+In this instance you can generally try the login again after some time has passed.
+====
++
+.Testing the Admin User
+[source,bash]
+----
+[student@workstation ~]$ oc login -u admin1 https://api.ocp4.example.com:6443
+Authentication required for https://api.ocp4.example.com:6443 (openshift)
+Username: admin1
+Password:
+Login successful.
+----
++
+.Testing the Demo User
+[source,bash]
+----
+[student@workstation ~]$ oc login
+Authentication required for https://api.ocp4.michettetech.com:6443 (openshift)
+Username: demo1
+Password:
+Login successful.
+
+You don't have any projects. You can try to create a new project, by running
+
+    oc new-project <projectname>
+----
+
 
 =====
