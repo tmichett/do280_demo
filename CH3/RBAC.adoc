@@ -1,0 +1,186 @@
+:pygments-style: tango
+:source-highlighter: coderay
+:toc:
+:toclevels: 7
+:sectnums:
+:sectnumlevels: 6
+:numbered:
+:chapter-label:
+:icons: font
+:imagesdir: images/
+
+=== Demonstration - Defining and Applying Permissions using RBAC
+
+.Defining and Applying Permissions using RBAC - Demo
+=====
+
+
+[TIP]
+====
+.Setup Users and Roles
+[source,bash]
+----
+[student@workstation ~]$ lab auth-rbac start
+
+[student@workstation ~]$ source /usr/local/etc/ocp4.config
+----
+====
+
+
+. Login as *admin* user
++
+[source,bash]
+----
+[student@workstation ~]$  oc login -u admin -p ${RHT_OCP4_USER_PASSWD} ${RHT_OCP4_MASTER_API}
+The server uses a certificate signed by an unknown authority.
+You can bypass the certificate check, but any data you send to the server could be intercepted by others.
+Use insecure connections? (y/n): y
+
+Login successful.
+
+You have access to 51 projects, the list has been suppressed. You can list all projects with 'oc projects'
+
+Using project "default".
+Welcome! See 'oc help' to get started.
+----
+
+
+. Determine user rights for creating a project
++
+[source,bash]
+----
+[student@workstation ~]$ oc adm policy who-can create project
+resourceaccessreviewresponse.authorization.openshift.io/<unknown>
+
+Namespace: default
+Verb:      create
+Resource:  projects.project.openshift.io
+
+Users:  admin
+        admin1
+        system:admin
+        system:serviceaccount:nexus-operator:nexus-operator
+
+... output omitted ...
+----
++
+.Adjusting Cluster Roles
+[NOTE]
+====
+Remove the self-provisioner role from all users. This will prevent users from creating new projects.
+
+.Removing Cluster Role Bindings from *system:authenticated:oauth*
+[source,bash]
+----
+[student@workstation ~]$ oc adm policy remove-cluster-role-from-group self-provisioner system:authenticated:oauth
+Warning: Your changes may get lost whenever a master is restarted, unless you prevent reconciliation of this rolebinding using the following command: oc annotate clusterrolebinding.rbac self-provisioners 'rbac.authorization.kubernetes.io/autoupdate=false' --overwriteclusterrole.rbac.authorization.k8s.io/self-provisioner removed: "system:authenticated:oauth
+----
+
+====
+
+. Login as another user and attempt to create a project
++
+.Login as *leader*
+[source,bash]
+----
+[student@workstation ~]$ oc login -u leader -p ${RHT_OCP4_USER_PASSWD}
+Login successful.
+
+You don't have any projects. Contact your system administrator to request a project
+
+[student@workstation ~]$ oc new-project test
+Error from server (Forbidden): You may not request a new project via this API.
+----
+
+. Login as admin user
++
+[source,bash]
+----
+[student@workstation ~]$ oc login -u admin -p ${RHT_OCP4_USER_PASSWD}
+Login successful.
+
+You have access to 51 projects, the list has been suppressed. You can list all projects with 'oc projects'
+
+Using project "default"
+----
+
+. Create a *Project Admin* group
++
+[source,bash]
+----
+[student@workstation ~]$ oc adm groups new project-admin
+group.user.openshift.io/project-admin created
+----
+
+. Add the *leader* user to the *Project Admin* group
++
+[source,bash]
+----
+[student@workstation ~]$ oc adm groups add-users project-admin leader
+group.user.openshift.io/project-admin added: "leader"
+----
+
+. Add the *self-provisioner* Role to the *Project Admin* group
++
+[source,bash]
+----
+[student@workstation ~]$ oc adm policy add-cluster-role-to-group self-provisioner project-admin
+clusterrole.rbac.authorization.k8s.io/self-provisioner added: "project-admin"
+----
+
+. Login as another user and attempt to create a project
++
+.Login as *leader*
+[source,bash]
+----
+[student@workstation ~]$ oc login -u leader -p ${RHT_OCP4_USER_PASSWD}
+Login successful.
+
+You don't have any projects. You can try to create a new project, by running
+
+    oc new-project <projectnam
+
+[student@workstation ~]$ oc new-project test
+Now using project "test" on server "https://api.ocp-gdqpjexgnzgogxx200728.do280.rht-na.nextcle.com:6443".
+
+You can add applications to this project with the 'new-app' command. For example, try:
+
+    oc new-app django-psql-example
+
+to build a new example application in Python. Or use kubectl to deploy a simple Kubernetes application:
+
+    kubectl create deployment hello-node --image=gcr.io/hello-minikube-zero-install/hello-node
+----
+
+. Fix the roles back to normal
++
+[source,bash]
+----
+[student@workstation ~]$ oc login -u admin -p ${RHT_OCP4_USER_PASSWD}
+
+
+[student@workstation ~]$ oc adm policy add-cluster-role-to-group self-provisioner system:authenticated:oauth
+
+Warning: Group 'system:authenticated:oauth' not found
+clusterrole.rbac.authorization.k8s.io/self-provisioner added: "system:authenticated:oauth"
+----
+
+. Delete the project and cleanup
++
+[source,bash]
+----
+[student@workstation ~]$ oc delete project test
+project.project.openshift.io "test" deleted
+
+[student@workstation ~]$ lab auth-rbac finish
+
+Completing Guided Exercise: Defining and Applying permissions using RBAC
+
+ · Delete HTPasswd entry for 'qa-engineer'.....................  SUCCESS
+ · Update the 'localusers' secret data.........................  SUCCESS
+
+Please use start if you wish to do the exercise again.
+----
+
+
+=====
