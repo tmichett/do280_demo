@@ -12,3 +12,4 @@
 == Configuring Authentication and Authorization
 
 include::./Configure_Identity_Providers.adoc[]
+include::./RBAC.adoc[]
