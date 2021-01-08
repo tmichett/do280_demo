@@ -1,0 +1,155 @@
+:pygments-style: tango
+:source-highlighter: coderay
+:toc:
+:toclevels: 7
+:sectnums:
+:sectnumlevels: 6
+:numbered:
+:chapter-label:
+:icons: font
+:imagesdir: images/
+
+=== Demonstration - Controlling Application Permissions with Security Context Constraints
+
+.Controlling Application Permissions with Security Context Constraints - Demo
+=====
+
+
+.Preparing Demo Environment
+[TIP]
+====
+Note that for the demo, not using the *least privileges* model.
+
+[source,bash]
+----
+[student@workstation ~]$ lab authorization-scc start
+----
+
+====
+
+. Source the file and login as developer
++
+[source,bash]
+----
+[student@workstation ~]$ source /usr/local/etc/ocp4.config
+
+[student@workstation ~]$ oc login -u developer -p developer
+Login successful.
+
+You don't have any projects. You can try to create a new project, by running
+
+    oc new-project <projectname>
+----
+
+. Create a new project
++
+[source,bash]
+----
+[student@workstation ~]$  oc new-project scc-demo
+Now using project "scc-demo" on server "https://api.ocp-gdqpjexgnzgogxx200728.do280.rht-na.nextcle.com:6443"
+----
+
+. Create New App
++
+[source,bash]
+----
+[student@workstation ~]$ oc new-app --name gitlab-demo --docker-image gitlab/gitlab-ce:8.4.3-ce.0
+--> Found container image a26371b (4 years old) from Docker Hub for "gitlab/gitlab-ce:8.4.3-ce.0"
+----
++
+.Obtaining Status of App
+[source,bash]
+----
+[student@workstation ~]$ oc get pods
+NAME                   READY   STATUS      RESTARTS   AGE
+gitlab-demo-1-7bz44    0/1     Error       0          44s
+gitlab-demo-1-deploy   0/1     Completed   0          54s
+----
++
+[CAUTION]
+====
+The application failed because it needs to run with different permissions and the newly created SCC.
+====
+
+. Source the file and login as admin
++
+[source,bash]
+----
+[student@workstation ~]$ oc login -u admin -p redhat
+Login successful.
+
+You don't have any projects. You can try to create a new project, by running
+
+    oc new-project <projectname>
+----
+
+. Create a Service Account
++
+[source,bash]
+----
+[student@workstation ~]$ oc create sa gitlab-svc
+serviceaccount/gitlab-svc created
+----
+
+. Assign the *anyuid* SCC to the Service Account
++
+[source,bash]
+----
+[student@workstation ~]$ oc adm policy add-scc-to-user anyuid -z gitlab-svc
+securitycontextconstraints.security.openshift.io/anyuid added to: ["system:serviceaccount:scc-demo:gitlab-svc"]
+----
+
+
+. Assign the new service account to the deployment
++
+[source,bash]
+----
+[student@workstation ~]$  oc set serviceaccount dc/gitlab-demo gitlab-svc
+deploymentconfig.apps.openshift.io/gitlab-demo serviceaccount updated
+----
++
+.Obtaining Status of App
+[source,bash]
+----
+[student@workstation ~]$ oc get pods
+NAME                   READY   STATUS        RESTARTS   AGE
+gitlab-demo-2-deploy   0/1     Completed     0          54s
+gitlab-demo-2-t7nfx    1/1     Running       0          45s
+----
+
+. Expose the Service and Obtain a Route
++
+.Exposing the Service
+[source,bash]
+----
+[student@workstation ~]$  oc expose service gitlab-demo --port 80
+route.route.openshift.io/gitlab-demo exposed
+----
++
+.Obtaining a Route
+[source,bash]
+----
+[student@workstation ~]$ oc get route gitlab-demo
+NAME          HOST/PORT                                                                      PATH   SERVICES      PORT   TERMINATION   WILDCARD
+gitlab-demo   gitlab-demo-scc-demo.apps.ocp-gdqpjexgnzgogxx200728.do280.rht-na.nextcle.com          gitlab-demo   80                   None
+----
+
+. Testing the Service
++
+image::Chapter4-dd8ac.png[title="Gitlab Login Screen", align="center"]
+
+. Cleanup Demo
++
+.Remove Project
+[source,bash]
+----
+[student@workstation ~]$ oc delete project scc-demo
+project.project.openshift.io "scc-demo" deleted
+----
++
+.Cleanup Lab
+[source,bash]
+----
+[student@workstation ~]$ lab authorization-scc finish
+----
+=====

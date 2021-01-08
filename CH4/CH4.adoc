@@ -1,0 +1,15 @@
+:pygments-style: tango
+:source-highlighter: coderay
+:toc:
+:toclevels: 7
+:sectnums:
+:sectnumlevels: 6
+:numbered:
+:chapter-label:
+:icons: font
+:imagesdir: images/
+
+== Configuring Application Security
+
+include::./Secrets.adoc[]
+include::./SCC.adoc[]
