@@ -1,0 +1,110 @@
+:pygments-style: tango
+:source-highlighter: coderay
+:toc:
+:toclevels: 7
+:sectnums:
+:sectnumlevels: 6
+:numbered:
+:chapter-label:
+:icons: font
+:imagesdir: images/
+
+=== Demonstration - Attaching Persistent Storage to Containers
+
+.Demonstration with Persistent Storage
+=====
+
+The purpose of this demonstration is to provide persistent storage to a container. We will be mounting local storage to the container as the web host storage.
+
+. Prepare directory to host local storage and copy files
++
+.Create a Directory
+[source,bash]
+----
+[student@workstation Chapter3]$ sudo mkdir /Webhosting
+----
++
+.Copy files to */Webhosting* directory
+[source,bash]
+----
+[student@workstation Chapter3]$ sudo cp Website/* /Webhosting
+----
+
+. Change ownership and set SELinux permissions on the directory and files.
++
+.Set Ownership and Permissions
+[source,bash]
+----
+[student@workstation Chapter3]$ sudo chown -R 48:48 /Webhosting
+----
++
+.Set and Restore SELinux Contexts
+[source,bash]
+----
+[student@workstation Chapter3]$ sudo semanage fcontext -a -t container_file_t '/Webhosting(/.*)?'
+
+[student@workstation Chapter3]$ sudo restorecon -Rv /Webhosting/
+restorecon reset /Webhosting context unconfined_u:object_r:default_t:s0->unconfined_u:object_r:container_file_t:s0
+restorecon reset /Webhosting/index2.html context unconfined_u:object_r:default_t:s0->unconfined_u:object_r:container_file_t:s0
+restorecon reset /Webhosting/index3.html context unconfined_u:object_r:default_t:s0->unconfined_u:object_r:container_file_t:s0
+restorecon reset /Webhosting/index.html context unconfined_u:object_r:default_t:s0->unconfined_u:object_r:container_file_t:s0
+----
+
+. Start Apache container
++
+.Using *podman run* to start a container with persistent storage
+[source,bash]
+----
+[student@workstation Chapter3]$ sudo podman run --name HTTPD-Demo2 -v /Webhosting:/var/www/html:Z -d redhattraining/httpd-parent:2.4
+
+Trying to pull registry.access.redhat.com/rhscl/httpd-24-rhel7:latest...Getting image source signatures
+Copying blob sha256:a03401a44180b6581a149376d6fd2d5bd85d938445fd5b5ad270e14ddde4937c
+
+... output omitted ...
+----
+
+. Show website from container
++
+.Attempt to connect to container
+[source,bash]
+----
+[student@workstation Chapter3]$ curl http://localhost
+curl: (7) Failed connect to localhost:80; Connection refused
+----
++
+.Network traffic not setup
+[TIP]
+====
+At this point, there is no network connection so it is expected that we don't have any connection.
+
+In order to verify the files exist, you must open a bash shell and look for the files from the mounted directory.
+
+.Verifying Mounted Drive and Files
+[source,bash]
+----
+[student@workstation Chapter3]$ sudo podman exec -it HTTPD-Demo2 /bin/bash
+bash-4.2$ ls -alR /var/www/html
+/var/www/html:
+total 12
+drwxr-xr-x. 2 apache  apache 62 Jul 16 23:10 .
+drwxr-xr-x. 4 default root   33 Jul  1 12:43 ..
+-rw-r--r--. 1 apache  apache 35 Jul 16 23:10 index.html
+-rw-r--r--. 1 apache  apache 36 Jul 16 23:10 index2.html
+-rw-r--r--. 1 apache  apache 36 Jul 16 23:10 index3.html
+----
+
+.Verify *apache* Service and Website
+[source,bash]
+----
+bash-4.4# curl localhost
+This is the Demo2 Index.html file.
+
+bash-4.4# curl http://localhost/index2.html
+This is the Demo2 Index2.html file.
+
+bash-4.4# curl http://localhost/index3.html
+This is the Demo2 Index3.html file.
+----
+====
+
+=====

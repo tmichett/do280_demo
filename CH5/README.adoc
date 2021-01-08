@@ -1,0 +1,17 @@
+ifndef::env-github[:icons: font]
+ifdef::env-github[]
+:status:
+:outfilesuffix: .adoc
+:caution-caption: :fire:
+:important-caption: :exclamation:
+:note-caption: :paperclip:
+:tip-caption: :bulb:
+:warning-caption: :warning:
+endif::[]
+:pygments-style: tango
+:source-highlighter: pygments
+:imagesdir: images/
+
+= DO285 Demos
+
+This folder contains demos or instructions for Chapter 5.
