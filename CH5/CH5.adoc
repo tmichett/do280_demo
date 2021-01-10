@@ -11,4 +11,6 @@
 
 == Configuring OpenShift Networking for Applications
 
-include::./Configure_Identity_Providers.adoc[]
+include::./Troubleshooting.adoc[]
+include::./External.adoc[]
+include::./Network_Policies.adoc[]

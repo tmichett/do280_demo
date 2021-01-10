@@ -9,8 +9,9 @@
 :icons: font
 :imagesdir: images/
 
-== Controlling Pod Scheduling
+=== Demonstration - Exposing Applications for External Access
 
-include::./Scheduling.adoc[]
-include::./Limiting_Resources.adoc[]
-include::./Scaling.adoc[]
+.Exposing Applications for External Access - Demo
+=====
+
+=====
