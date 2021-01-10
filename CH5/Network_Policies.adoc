@@ -14,4 +14,220 @@
 .Configuring Network Policies - Demo
 =====
 
+
+
+. Login as a Developer
++
+[source,bash]
+----
+[student@workstation ~]$ oc login -u developer -p developer
+Login successful.
+
+You don't have any projects. You can try to create a new project, by running
+
+    oc new-project <projectname>
+----
+
+. Create a project
++
+[source,bash]
+----
+[student@workstation ~]$ oc new-project network-policy-demo
+Now using project "network-policy-demo" on server "https://api.ocp4.example.com:6443".
+
+You can add applications to this project with the 'new-app' command. For example, try:
+
+    oc new-app ruby~https://github.com/sclorg/ruby-ex.git
+
+to build a new example application in Ruby. Or use kubectl to deploy a simple Kubernetes application:
+
+    kubectl create deployment hello-node --image=gcr.io/hello-minikube-zero-install/hello-node
+----
+
+. Create a application deployments for the NGINX Webserver
++
+[source,bash]
+----
+[student@workstation ~]$ oc new-app --name demo1 --docker-image quay.io/redhattraining/hello-world-nginx:v1.0
+--> Found container image 44eaa13 (17 months old) from quay.io for "quay.io/redhattraining/hello-world-nginx:v1.0"
+
+
+[student@workstation ~]$ oc new-app --name test1 --docker-image quay.io/redhattraining/hello-world-nginx:v1.0
+----
+
+. Create a route for the *demo1* application
++
+[source,bash]
+----
+[student@workstation ~]$ oc expose service demo1
+route.route.openshift.io/demo1 exposed
+----
++
+.Retrieve Information in Another Console
+[TIP]
+====
+
+Using a script to get formatted information.
+
+[source,bash]
+----
+[student@workstation ~]$ ~/github/do280_demo/CH5/network-policy/display-project-info-demo.sh
+===================================================================
+PROJECT: network-policy-demo
+
+POD NAME                 IP ADDRESS
+demo1-7fc755b889-8f6bw   10.10.0.35
+test1-59c8bcfbd5-6n489   10.9.0.38
+
+SERVICE NAME   CLUSTER-IP
+demo1          172.30.1.108
+test1          172.30.113.248
+
+ROUTE NAME   HOSTNAME                                          PORT
+demo1        demo1-network-policy-demo.apps.ocp4.example.com   8080-tcp
+
+===================================================================
+----
+====
+
+
+. Test the route with *oc rsh* and *curl*
++
+[source,bash]
+----
+[student@workstation ~]$ oc get pods
+NAME                     READY   STATUS    RESTARTS   AGE
+demo1-7fc755b889-8f6bw   1/1     Running   0          6m18s
+test1-59c8bcfbd5-6n489   1/1     Running   0          6m6s
+
+
+[student@workstation network-policy]$ oc rsh test1-59c8bcfbd5-xdcc5 curl 10.8.0.17:8080 | grep Hello
+    <h1>Hello, world from nginx!</h1>
+
+[student@workstation network-policy]$ oc rsh test1-59c8bcfbd5-xdcc5 curl 172.30.7.87:8080 | grep Hello
+    <h1>Hello, world from nginx!</h1>
+
+[student@workstation network-policy]$ curl -s demo1-network-policy-demo.apps.ocp4.example.com | grep Hello
+    <h1>Hello, world from nginx!</h1>
+----
++
+.Testing Services in the Demo Container
+[TIP]
+====
+Need to take the IP address from the demo container for the internal 10.XX subnet and the 172.XX subnets.
+
+====
+
+. Create a New Project called *network-test-demo*
++
+[source,bash]
+----
+[student@workstation ~]$ oc new-project network-test-demo
+Now using project "network-test" on server "https://api.ocp4.example.com:6443".
+----
+
+. Create a new Demo App
++
+[source,bash]
+----
+[student@workstation ~]$ oc new-app --name demo-app --docker-image quay.io/redhattraining/hello-world-nginx:v1.0
+--> Found container image 44eaa13 (17 months old) from quay.io for "quay.io/redhattraining/hello-world-nginx:v1.0"
+----
++
+.Retrieve information in another console
+[TIP]
+====
+
+Script to get formatted information.
+
+[source,bash]
+----
+[student@workstation ~]$ ~/github/do280_demo/CH5/network-policy/display-project-info-demo.sh
+===================================================================
+PROJECT: network-policy-demo
+
+POD NAME                 IP ADDRESS
+demo1-7fc755b889-8f6bw   10.10.0.35
+test1-59c8bcfbd5-6n489   10.9.0.38
+
+SERVICE NAME   CLUSTER-IP
+demo1          172.30.1.108
+test1          172.30.113.248
+
+ROUTE NAME   HOSTNAME                                          PORT
+demo1        demo1-network-policy-demo.apps.ocp4.example.com   8080-tcp
+
+===================================================================
+PROJECT: network-test-demo
+
+POD NAME
+demo-app-5ccc5f98c-7w7f7
+
+===================================================================
+----
+
+====
+
+. Test the route with *oc rsh* and *curl*
++
+[source,bash]
+----
+[student@workstation network-policy]$ oc rsh demo-app-5ccc5f98c-rgvd2 curl 10.8.0.17:8080 | grep Hello
+    <h1>Hello, world from nginx!</h1>
+
+[student@workstation network-policy]$ oc rsh demo-app-5ccc5f98c-rgvd2 curl 10.8.0.18:8080 | grep Hello
+    <h1>Hello, world from nginx!</h1>
+
+----
+
+. Switch to the main project to deny networking *network-policy-demo*
++
+[source,bash]
+----
+[student@workstation ~]$ oc project network-policy-demo
+Now using project "network-policy" on server "https://api.ocp4.example.com:6443".
+
+[student@workstation network-policy]$ oc rsh test1-59c8bcfbd5-xdcc5 curl 10.8.0.17:8080 | grep Hello
+command terminated with exit code 130
+----
++
+.Network Policy Resources
+[IMPORTANT]
 =====
+It is extremely important to implement the Network Policy on the correct project. Network Policies are implemented at a Project/Namespace level.
+=====
+
+
+
+. Create a DENY All Policy Resource
++
+[source,bash]
+----
+[student@workstation network-policy]$ vim deny-all-demo.yaml
+
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: deny-all-demo
+spec:
+  podSelector: {} <1>
+----
+<1> Add a *podSelector* but leave empty to target all pods in the namespace.
+
+. Use the *oc create* command to create the Deny all policy
++
+[source,bash]
+----
+[student@workstation network-policy]$ oc create -f deny-all-demo.yaml
+networkpolicy.networking.k8s.io/deny-all-demo created
+----
+
+. Verify networking is broken via RSH and the route
++
+[source,bash]
+----
+[student@workstation network-policy]$ curl -s demo1-network-policy-demo.apps.ocp4.example.com | grep Hello
+^C
+----
+
+====
