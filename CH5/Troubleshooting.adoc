@@ -14,4 +14,233 @@
 .Troubleshooting OpenShift Software-Defined Networking - Demo
 =====
 
+.Setup Lab Environment
+[TIP]
+====
+[source,bash]
+----
+[student@workstation ~]$ lab network-sdn start
+----
+====
+
+. Login to OCP
++
+.Source the Resource File
+[source,bash]
+----
+[student@workstation ~]$ source /usr/local/etc/ocp4.config
+----
++
+.Login as Admin
+[source,bash]
+----
+[student@workstation ~]$ oc login -u admin -p ${RHT_OCP4_USER_PASSWD}
+Login successful.
+----
+
+. Create a Project
++
+[source,bash]
+----
+[student@workstation ~]$ oc new-project sdn-demo
+Now using project "sdn-demo" on server "https://api.ocp-gdqpjexgnzgogxx200728.do280.rht-na.nextcle.com:6443".
+----
+
+. Create a Database Application
++
+[source,bash]
+----
+[student@workstation ~]$ oc create -f DO280/labs/network-sdn/todo-db.yaml
+deployment.apps/mysql created
+service/mysql created
+----
+
+. Obtain Status
++
+.Using *oc status*
+[source,bash]
+----
+[student@workstation ~]$ oc status
+In project sdn-demo on server https://api.ocp-gdqpjexgnzgogxx200728.do280.rht-na.nextcle.com:6443
+
+svc/mysql - 172.30.96.28:3306
+  deployment/mysql deploys mysql:8.0
+    deployment #1 running for about a minute - 1 pod
+
+
+1 info identified, use 'oc status --suggest' to see details
+----
++
+.Using *oc get pods*
+[source,bash]
+----
+[student@workstation ~]$ oc get pods
+NAME                     READY   STATUS    RESTARTS   AGE
+mysql-5c7f69846f-sl68j   1/1     Running   0          112s
+----
+
+. Obtaining information about the MySQL Pod
++
+[source,bash]
+----
+[student@workstation ~]$ oc describe pod mysql-5c7f69846f-sl68j
+Name:               mysql-5c7f69846f-sl68j
+Namespace:          sdn-demo
+Priority:           0
+PriorityClassName:  <none>
+Node:               ip-10-0-138-11.ec2.internal/10.0.138.11
+Start Time:         Tue, 28 Jul 2020 16:03:05 -0400
+Labels:             app=todonodejs
+                    name=mysql
+                    pod-template-hash=5c7f69846f
+Annotations:        k8s.v1.cni.cncf.io/networks-status:
+                      [{
+                          "name": "openshift-sdn",
+                          "interface": "eth0",
+                          "ips": [
+                              "10.131.0.29"
+                          ],
+                          "default": true,
+                          "dns": {}
+                      }]
+                    openshift.io/scc: restricted
+Status:             Running
+IP:                 10.131.0.29
+Controlled By:      ReplicaSet/mysql-5c7f69846f
+Containers:
+  mysql:
+    Container ID:   cri-o://c34759f1ca9daaade06b736b57278693fcefacd5679e9ae2196ca3b067edf402
+    Image:          mysql:8.0
+    Image ID:       docker.io/library/mysql@sha256:f1f10a8a6014bda907889c2f649d7b832398432b6eb4849331818f01533db293
+    Port:           3306/TCP
+    Host Port:      0/TCP
+    State:          Running
+      Started:      Tue, 28 Jul 2020 16:03:26 -0400
+    Ready:          True
+    Restart Count:  0
+    Environment:
+      MYSQL_ROOT_PASSWORD:  r00tpa55
+      MYSQL_USER:           user1
+      MYSQL_PASSWORD:       mypa55
+      MYSQL_DATABASE:       items
+    Mounts:
+      /var/lib/mysql from db-volume (rw)
+      /var/run/secrets/kubernetes.io/serviceaccount from default-token-kk4xk (ro)
+Conditions:
+  Type              Status
+  Initialized       True
+  Ready             True
+  ContainersReady   True
+  PodScheduled      True
+Volumes:
+  db-volume:
+    Type:       EmptyDir (a temporary directory that shares a pod's lifetime)
+    Medium:
+    SizeLimit:  <unset>
+  db-init:
+    Type:       EmptyDir (a temporary directory that shares a pod's lifetime)
+    Medium:
+    SizeLimit:  <unset>
+  default-token-kk4xk:
+    Type:        Secret (a volume populated by a Secret)
+    SecretName:  default-token-kk4xk
+    Optional:    false
+QoS Class:       BestEffort
+Node-Selectors:  <none>
+Tolerations:     node.kubernetes.io/not-ready:NoExecute for 300s
+                 node.kubernetes.io/unreachable:NoExecute for 300s
+Events:
+  Type    Reason     Age    From                                  Message
+  ----    ------     ----   ----                                  -------
+  Normal  Scheduled  3m9s   default-scheduler                     Successfully assigned sdn-demo/mysql-5c7f69846f-sl68j to ip-10-0-138-11.ec2.internal
+  Normal  Pulling    3m1s   kubelet, ip-10-0-138-11.ec2.internal  Pulling image "mysql:8.0"
+  Normal  Pulled     2m48s  kubelet, ip-10-0-138-11.ec2.internal  Successfully pulled image "mysql:8.0"
+  Normal  Created    2m48s  kubelet, ip-10-0-138-11.ec2.internal  Created container mysql
+  Normal  Started    2m48s  kubelet, ip-10-0-138-11.ec2.internal  Started container mysql
+----
+
+. Add information into the MySQL DataBase
++
+[source,bash]
+----
+[student@workstation ~]$ oc cp DO280/labs/network-sdn/db-data.sql mysql-5c7f69846f-sl68j:/tmp
+----
+
+. Expose the MySQL Service
++
+[source,bash]
+----
+[student@workstation ~]$ oc expose service mysql
+route.route.openshift.io/mysql exposed
+----
+
+. Obtain the Routes
++
+[source,bash]
+----
+[student@workstation ~]$  oc get routes
+NAME    HOST/PORT                              PATH   SERVICES   PORT   TERMINATION   WILDCARD
+mysql   mysql-sdn-demo.apps.ocp4.example.com          mysql      3306                 None
+----
+
+. Verify the Service
++
+.Getting Service Information
+[source,bash]
+----
+[student@workstation ~]$ oc get service mysql
+NAME    TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
+mysql   ClusterIP   172.30.61.154   <none>        3306/TCP   85s
+----
++
+.Looking for Service Endpoints
+[source,bash]
+----
+[student@workstation ~]$ oc describe svc/mysql
+Name:              mysql
+Namespace:         sdn-demo
+Labels:            app=todonodejs
+                   name=mysql
+Annotations:       <none>
+Selector:          name=mysql
+Type:              ClusterIP
+IP:                172.30.61.154
+Port:              <unset>  3306/TCP
+TargetPort:        3306/TCP
+Endpoints:         10.8.0.10:3306
+Session Affinity:  None
+Events:            <none>
+----
++
+.Checking Network Connectivity
+[source,bash]
+----
+[student@workstation ~]$  curl -v telnet://mysql-sdn-demo.apps.ocp4.example.com:80
+* Rebuilt URL to: telnet://mysql-sdn-demo.apps.ocp4.example.com:80/
+*   Trying 192.168.50.254...
+* TCP_NODELAY set
+* Connected to mysql-sdn-demo.apps.ocp4.example.com (192.168.50.254) port 80 (#0)
+----
+
+. Cleanup Demo
++
+.Removing Project
+[source,bash]
+----
+[student@workstation ~]$ oc delete project sdn-demo
+project.project.openshift.io "sdn-demo" deleted
+----
++
+.Running Lab Finish
+[source,bash]
+----
+[student@workstation ~]$ lab network-sdn finish
+
+Completing Troubleshooting OpenShift Software-Defined Networking
+
+ · Remove exercise files.......................................  SUCCESS
+ · Remove solution files.......................................  SUCCESS
+
+Please use start if you wish to do the exercise again.
+----
 =====

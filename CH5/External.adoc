@@ -14,4 +14,128 @@
 .Exposing Applications for External Access - Demo
 =====
 
+
+
+.Preparing Demo Environment
+[TIP]
+====
+
+[source,bash]
+----
+[student@workstation ~]$ lab network-ingress start
+----
+
+====
+
+. Login to OpenShift
++
+[source,bash]
+----
+[student@workstation ~]$ source /usr/local/etc/ocp4.config
+
+[student@workstation ~]$ oc login -u admin -p ${RHT_OCP4_USER_PASSWD}
+
+----
+
+. Create a Project
++
+[source,bash]
+----
+[student@workstation ~]$ oc new-project network-demo
+
+[student@workstation ~]$ cd /home/student/github/do280_demo/CH5/network-ingress/certs
+----
+
+. Generate TLS Certificates for Pass-Through Routes
++
+.Generate a Private Key for the Certificate
+[source,bash]
+----
+[student@workstation network-ingress]$ openssl genrsa -out demo.key 2048
+Generating RSA private key, 2048 bit long modulus (2 primes)
+...........................+++++
+.+++++
+e is 65537 (0x010001)
+----
++
+.Generate CSR Request
+[source,bash]
+----
+[student@workstation network-ingress]$ openssl req -new -subj "/C=US/ST=North Carolina/L=Raleigh/O=Red Hat/CN=https.${RHT_OCP4_WILDCARD_DOMAIN}" -key demo.key -out demo.csr
+----
++
+.Sign the Key with the Provided Training CA Key
+[source,bash]
+----
+[student@workstation certs]$ openssl x509 -req -in demo.csr -passin file:passphrase.txt -CA training-CA.pem -CAkey training-CA.key -CAcreateserial -out demo.crt -days 365 -sha256 -extfile training.ext
+Signature ok
+subject=C = US, ST = North Carolina, L = Raleigh, O = Red Hat, CN = https.apps.ocp-gdqpjexgnzgogxx200728.do280.rht-na.nextcle.com
+Getting CA Private Key
+----
+
+. Create the *secret* for the application
++
+[source,bash]
+----
+[student@workstation certs]$ oc create secret tls todo-certs --cert=demo.crt --key=demo.key
+secret/todo-certs created
+----
+
+. Create Application
++
+[source,bash]
+----
+[student@workstation network-ingress]$ oc create -f todo-demo.yaml
+deployment.apps/todo-https created
+service/todo-https created
+----
+
+. Obtain Status
++
+[source,bash]
+----
+[student@workstation network-ingress]$ oc get pods
+NAME                          READY   STATUS    RESTARTS   AGE
+todo-https-59d8fc9d47-rrws5   1/1     Running   0          37s
+----
+
+. Create Pass-through Route
++
+[source,bash]
+----
+[student@workstation network-ingress]$ oc create route passthrough https --service todo-https --port 8443 --hostname https.${RHT_OCP4_WILDCARD_DOMAIN}
+route.route.openshift.io/https created
+----
+
+. Obtain Route Information
++
+[source,bash]
+----
+[student@workstation network-ingress]$ oc get route
+NAME    HOST/PORT                     PATH   SERVICES     PORT   TERMINATION   WILDCARD
+https   https.apps.ocp4.example.com          todo-https   8443   passthrough   None
+----
++
+.Remember to place *https* into the URL
+[TIP]
+====
+https://https.apps.ocp4.example.com/
+====
+
+. Test the applicaiton
++
+image::Chapter5-f7116.png[title="To-Do App in Firefox", align="center"]
++
+image::Chapter5-7fd47.png[title="Certificate info in Firefox", align="center"]
+
+. Cleanup the environment
++
+[source,bash]
+----
+[student@workstation network-ingress]$ oc delete project network-demo
+project.project.openshift.io "network-demo" deleted
+
+[student@workstation network-ingress]$ lab network-ingress finish
+----
+
 =====
