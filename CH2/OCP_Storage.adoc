@@ -106,7 +106,7 @@ oc set volumes deployment/db-storage-demo \
 +
 [source,bash]
 ----
-[student@workstation ~]$ ~/github/do280_demo/Chapter2/install-storage/init_data_demo.sh
+[student@workstation ~]$ ~/github/do280_demo/CH2/install-storage/init_data_demo.sh
 Populating characters table
 CREATE TABLE
 INSERT 0 5
@@ -116,7 +116,7 @@ INSERT 0 5
 +
 [source,bash]
 ----
-[student@workstation ~] ~/github/do280_demo/Chapter2/install-storage/check_data_demo.sh
+[student@workstation ~] ~/github/do280_demo/CH2/install-storage/check_data_demo.sh
 ----
 
 . Remove active deployment and create a new one to test persistent storage
@@ -144,7 +144,7 @@ oc new-app --name db-storage-demo2 \
 +
 [source,bash]
 ----
-[student@workstation ~]$ ~/github/do280_demo/Chapter2/install-storage/check_data_demo.sh
+[student@workstation ~]$ ~/github/do280_demo/CH2/install-storage/check_data_demo.sh
 Checking characters table
 ERROR: 'characters' table does not exist
 ----
@@ -163,7 +163,7 @@ deployment.apps/db-storage-demo2 volume updated
 +
 [source,bash]
 ----
-[student@workstation ~]$ ~/github/do280_demo/Chapter2/install-storage/check_data_demo.sh
+[student@workstation ~]$ ~/github/do280_demo/CH2/install-storage/check_data_demo.sh
 ----
 
 . Perform Cleanup
