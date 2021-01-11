@@ -81,7 +81,7 @@ nginx-demo   nginx-demo-schedule-demo.apps.ocp-gdqpjexgnzgogxx200728.do280.rht-n
 +
 [source,bash]
 ----
-[student@workstation ~]$ curl nginx-demo-schedule-demo.apps.ocp-gdqpjexgnzgogxx200728.do280.rht-na.nextcle.com
+[student@workstation ~]$ curl nginx-demo-schedule-demo.apps.ocp4.example.com
 <html>
   <body>
     <h1>Hello, world from nginx!</h1>
@@ -149,20 +149,27 @@ ocp-gdqpjexgnzgogxx20-lxt6b-worker-us-east-1c   2         2         2       2   
 [source,bash]
 ----
 [student@workstation ~]$ oc get nodes -L environment -l node-role.kubernetes.io/worker
-NAME                           STATUS   ROLES    AGE   VERSION             ENVIRONMENT
-ip-10-0-138-11.ec2.internal    Ready    worker   25h   v1.14.6+cebabbf4a
-ip-10-0-140-163.ec2.internal   Ready    worker   25h   v1.14.6+cebabbf4a
+NAME       STATUS   ROLES           AGE    VERSION           ENVIRONMENT
+master01   Ready    master,worker   158d   v1.18.3+012b3ec
+master02   Ready    master,worker   158d   v1.18.3+012b3ec
+master03   Ready    master,worker   158d   v1.18.3+012b3ec
 ----
++
+.New Environment Doesn't have Machine Sets
+[TIP]
+====
+The current OCP 4.5 course is deployed locally and not in AWS. It doesn't provide machine sets, so we are only labeling the Nodes.
+====
 
 . Label the nodes
 +
 [source,bash]
 ----
-[student@workstation ~]$ oc label node ip-10-0-138-11.ec2.internal environment=prod
-node/ip-10-0-138-11.ec2.internal labeled
+[student@workstation ~]$ oc label node master01 environment=prod
+node/master01 labeled
 
-[student@workstation ~]$ oc label node ip-10-0-140-163.ec2.internal environment=dev
-node/ip-10-0-140-163.ec2.internal labeled
+[student@workstation ~]$ oc label node master02 environment=dev
+node/master02 labeled
 ----
 
 . Verify Node Labels
@@ -170,9 +177,10 @@ node/ip-10-0-140-163.ec2.internal labeled
 [source,bash]
 ----
 [student@workstation ~]$ oc get nodes -L environment -l node-role.kubernetes.io/worker
-NAME                           STATUS   ROLES    AGE   VERSION             ENVIRONMENT
-ip-10-0-138-11.ec2.internal    Ready    worker   25h   v1.14.6+cebabbf4a   prod
-ip-10-0-140-163.ec2.internal   Ready    worker   25h   v1.14.6+cebabbf4a   dev
+NAME       STATUS   ROLES           AGE    VERSION           ENVIRONMENT
+master01   Ready    master,worker   158d   v1.18.3+012b3ec   prod
+master02   Ready    master,worker   158d   v1.18.3+012b3ec   dev
+master03   Ready    master,worker   158d   v1.18.3+012b3ec
 ----
 
 . Modify the Deployment Config
@@ -203,6 +211,12 @@ nginx-demo-bf86f9788-5vrbk   1/1     Running   0          33s   10.128.2.37   ip
 nginx-demo-bf86f9788-6tx27   1/1     Running   0          25s   10.128.2.38   ip-10-0-140-163.ec2.internal   <none>           <none>
 nginx-demo-bf86f9788-djvd9   1/1     Running   0          17s   10.128.2.39   ip-10-0-140-163.ec2.internal   <none>           <none>
 ----
++
+.Node Selector
+[NOTE]
+====
+After applying the node selector, all containers/pods will be running in the DEV environment. It will terminate containers on anything not labeled DEV and will start new containers to meet the number specified in the scaling of the replicas.
+====
 
 . Cleanup the lab environment
 +
