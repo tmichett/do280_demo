@@ -26,7 +26,8 @@ lab schedule-limit start
 
 [source,bash]
 ----
-cd /home/student/Demo/Chapter6/schedule-limit
+[student@workstation ~]$ cd /home/student/github/do280_demo/CH6/schedule-limit/
+[student@workstation schedule-limit]$
 ----
 
 ====
@@ -46,8 +47,8 @@ Login successful.
 +
 [source,bash]
 ----
-[student@workstation ~]$ oc new-project limit-demo
-Now using project "limit-demo" on server "https://api.ocp-gdqpjexgnzgogxx200728.do280.rht-na.nextcle.com:6443".
+[student@workstation schedule-limit]$  oc new-project limit-demo
+Now using project "limit-demo" on server "https://api.ocp4.example.com:6443"
 ----
 
 . Create a deployment resource
@@ -141,7 +142,7 @@ spec:
     name: hello-world-nginx
     resources:
       requests:
-        cpu: "2"
+        cpu: "1"
         memory: 20Mi
 ----
 
