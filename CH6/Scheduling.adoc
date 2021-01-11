@@ -14,4 +14,208 @@
 .Controlling Pod Scheduling Behavior - Demo
 =====
 
+.Setup Lab Environment
+[TIP]
+====
+
+[source,bash]
+----
+[student@workstation ~]$ lab schedule-pods start
+----
+
+====
+
+. Source Resource file and login to the OCP environment
++
+[source,bash]
+----
+[student@workstation ~]$ source /usr/local/etc/ocp4.config
+
+[student@workstation ~]$ oc login -u admin -p ${RHT_OCP4_USER_PASSWD}
+Login successful.
+----
+
+. Create a new project
++
+[source,bash]
+----
+[student@workstation ~]$ oc new-project schedule-demo
+Now using project "schedule-demo" on server "https://api.ocp-gdqpjexgnzgogxx200728.do280.rht-na.nextcle.com:6443"
+----
+
+. Create an application
++
+.Source Description
+[source,bash]
+----
+[student@workstation ~]$ oc create deployment nginx-demo --image quay.io/redhattraining/hello-world-nginx:v1.0
+deployment.apps/nginx-demo created
+----
+
+. Create a service for the newly created application
++
+[source,bash]
+----
+[student@workstation ~]$ oc expose deployment/nginx-demo --port 80 --target-port 8080
+service/nginx-demo exposed
+----
+
+. Create a route to the service
++
+[source,bash]
+----
+[student@workstation ~]$ oc expose svc/nginx-demo
+route.route.openshift.io/nginx-demo exposed
+----
+
+. Obtain the Route
++
+[source,bash]
+----
+[student@workstation ~]$ oc get route
+NAME         HOST/PORT                                                                          PATH   SERVICES     PORT   TERMINATION   WILDCARD
+nginx-demo   nginx-demo-schedule-demo.apps.ocp-gdqpjexgnzgogxx200728.do280.rht-na.nextcle.com          nginx-demo   8080                 Non
+----
+
+. Test Service and Route
++
+[source,bash]
+----
+[student@workstation ~]$ curl nginx-demo-schedule-demo.apps.ocp-gdqpjexgnzgogxx200728.do280.rht-na.nextcle.com
+<html>
+  <body>
+    <h1>Hello, world from nginx!</h1>
+  </body>
+</html>
+----
+
+. Show Pod Status
++
+[source,bash]
+----
+[student@workstation ~]$ oc get pods -o wide
+NAME                          READY   STATUS    RESTARTS   AGE     IP            NODE                           NOMINATED NODE   READINESS GATES
+nginx-demo-5db4677c6f-xg795   1/1     Running   0          3m17s   10.128.2.35   ip-10-0-140-163.ec2.internal   <none>           <none>
+----
+
+. Scale Pods
++
+[source,bash]
+----
+[student@workstation ~]$ oc scale --replicas 3 deployment/nginx-demo
+deployment.extensions/nginx-demo scaled
+----
+
+. Show Pod Status
++
+[source,bash]
+----
+[student@workstation ~]$ oc get pods -o wide
+NAME                          READY   STATUS    RESTARTS   AGE     IP            NODE                           NOMINATED NODE   READINESS GATES
+nginx-demo-5db4677c6f-phdfl   1/1     Running   0          28s     10.131.0.46   ip-10-0-138-11.ec2.internal    <none>           <none>
+nginx-demo-5db4677c6f-qn52q   1/1     Running   0          28s     10.131.0.47   ip-10-0-138-11.ec2.internal    <none>           <none>
+nginx-demo-5db4677c6f-xg795   1/1     Running   0          4m30s   10.128.2.35   ip-10-0-140-163.ec2.internal   <none>           <none>
+----
+
+.Preparing Environment for Labels
+[TIP]
+====
+The environment can be prepared for and labeled at any time. It is necessary to get machines and machine sets used to generate the workers.
+====
+
+. Prepare Worker Nodes
++
+.Retrieving Machines
+[source,bash]
+----
+[student@workstation ~]$ oc get machines -n openshift-machine-api -o wide
+NAME                                                  STATE     TYPE        REGION      ZONE         AGE   NODE                           PROVIDERID
+ocp-gdqpjexgnzgogxx20-lxt6b-master-0                  running   m5.xlarge   us-east-1   us-east-1c   25h   ip-10-0-136-194.ec2.internal   aws:///us-east-1c/i-0d27ad8c403cb6c60
+ocp-gdqpjexgnzgogxx20-lxt6b-master-1                  running   m5.xlarge   us-east-1   us-east-1c   25h   ip-10-0-129-197.ec2.internal   aws:///us-east-1c/i-0eca34fc77470b048
+ocp-gdqpjexgnzgogxx20-lxt6b-master-2                  running   m5.xlarge   us-east-1   us-east-1c   25h   ip-10-0-130-201.ec2.internal   aws:///us-east-1c/i-037ba2522006b72d7
+ocp-gdqpjexgnzgogxx20-lxt6b-worker-us-east-1c-72nc4   running   m5.xlarge   us-east-1   us-east-1c   25h   ip-10-0-138-11.ec2.internal    aws:///us-east-1c/i-0ee918f9fb8b6475f
+ocp-gdqpjexgnzgogxx20-lxt6b-worker-us-east-1c-trfdt   running   m5.xlarge   us-east-1   us-east-1c   25h   ip-10-0-140-163.ec2.internal   aws:///us-east-1c/i-0e41d244f73b64630
+----
++
+.Retrieving Machine Sets
+[source,bash]
+----
+[student@workstation ~]$ oc get machinesets -n openshift-machine-api
+NAME                                            DESIRED   CURRENT   READY   AVAILABLE   AGE
+ocp-gdqpjexgnzgogxx20-lxt6b-worker-us-east-1c   2         2         2       2           25h
+----
++
+.Look for labels to be defined in the desired machine set
+[source,bash]
+----
+[student@workstation ~]$ oc get nodes -L environment -l node-role.kubernetes.io/worker
+NAME                           STATUS   ROLES    AGE   VERSION             ENVIRONMENT
+ip-10-0-138-11.ec2.internal    Ready    worker   25h   v1.14.6+cebabbf4a
+ip-10-0-140-163.ec2.internal   Ready    worker   25h   v1.14.6+cebabbf4a
+----
+
+. Label the nodes
++
+[source,bash]
+----
+[student@workstation ~]$ oc label node ip-10-0-138-11.ec2.internal environment=prod
+node/ip-10-0-138-11.ec2.internal labeled
+
+[student@workstation ~]$ oc label node ip-10-0-140-163.ec2.internal environment=dev
+node/ip-10-0-140-163.ec2.internal labeled
+----
+
+. Verify Node Labels
++
+[source,bash]
+----
+[student@workstation ~]$ oc get nodes -L environment -l node-role.kubernetes.io/worker
+NAME                           STATUS   ROLES    AGE   VERSION             ENVIRONMENT
+ip-10-0-138-11.ec2.internal    Ready    worker   25h   v1.14.6+cebabbf4a   prod
+ip-10-0-140-163.ec2.internal   Ready    worker   25h   v1.14.6+cebabbf4a   dev
+----
+
+. Modify the Deployment Config
++
+[source,bash]
+----
+[student@workstation ~]$ oc edit deployment/nginx-demo
+
+... output omitted ...
+
+    dnsPolicy: ClusterFirst
+    nodeSelector: <1>
+      environment: dev
+    restartPolicy: Always
+
+... output omitted ...
+
+----
+<1> Node selector and items below need provided
+
+. Verify application pods moved to the correctly labeled nodes
++
+[source,bash]
+----
+[student@workstation ~]$ oc get pods -o wide
+NAME                         READY   STATUS    RESTARTS   AGE   IP            NODE                           NOMINATED NODE   READINESS GATES
+nginx-demo-bf86f9788-5vrbk   1/1     Running   0          33s   10.128.2.37   ip-10-0-140-163.ec2.internal   <none>           <none>
+nginx-demo-bf86f9788-6tx27   1/1     Running   0          25s   10.128.2.38   ip-10-0-140-163.ec2.internal   <none>           <none>
+nginx-demo-bf86f9788-djvd9   1/1     Running   0          17s   10.128.2.39   ip-10-0-140-163.ec2.internal   <none>           <none>
+----
+
+. Cleanup the lab environment
++
+.Deleting Project
+[source,bash]
+----
+[student@workstation ~]$ oc delete project schedule-demo
+project.project.openshift.io "schedule-demo" deleted
+----
++
+.Lab Cleanup
+[source,bash]
+----
+[student@workstation ~]$ lab schedule-pods finish
+----
 =====

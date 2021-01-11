@@ -14,4 +14,194 @@
 .Limiting Resource Usage by an Application - Demo
 =====
 
+.Prepare Lab Environment
+[TIP]
+====
+
+[source,bash]
+----
+lab schedule-limit start
+----
+
+
+[source,bash]
+----
+cd /home/student/Demo/Chapter6/schedule-limit
+----
+
+====
+
+. Source Resource File and Login to OC Client
++
+[source,bash]
+----
+[student@workstation ~]$ source /usr/local/etc/ocp4.config
+
+[student@workstation ~]$ oc login -u admin -p ${RHT_OCP4_USER_PASSWD}
+Login successful.
+----
+
+
+. Create a new project
++
+[source,bash]
+----
+[student@workstation ~]$ oc new-project limit-demo
+Now using project "limit-demo" on server "https://api.ocp-gdqpjexgnzgogxx200728.do280.rht-na.nextcle.com:6443".
+----
+
+. Create a deployment resource
++
+[source,bash]
+----
+[student@workstation schedule-limit]$ oc create deployment hello-demo-limit --image quay.io/redhattraining/hello-world-nginx:v1.0 --dry-run -o yaml > hello-demo-limit.yaml
+----
+
+. Edit the Deployment Resource
++
+[source,bash]
+----
+[student@workstation schedule-limit]$ vim hello-demo-limit.yaml
+
+... output omitted ...
+
+spec:
+  containers:
+  - image: quay.io/redhattraining/hello-world-nginx:v1.0
+    name: hello-world-nginx
+    resources:
+      requests:
+        cpu: "3"
+        memory: 20Mi
+----
++
+.Locate the *resources* section
+[TIP]
+====
+The *resources* section will usually be undefined for new applications and deployments.
+
+[source,bash]
+----
+... output omitted ...
+
+  spec:
+    containers:
+    - image: quay.io/redhattraining/hello-world-nginx:v1.0
+      name: hello-world-nginx
+      resources: {}
+status: {}
+----
+
+====
+
+
+. Create and Application from the Resource File
++
+[source,bash]
+----
+[student@workstation schedule-limit]$ oc create --save-config -f hello-demo-limit.yaml
+deployment.apps/hello-demo-limit created
+----
+
+. Examine Deployed Pods
++
+[source,bash]
+----
+[student@workstation schedule-limit]$ oc get pods
+NAME                                READY   STATUS    RESTARTS   AGE
+hello-demo-limit-5d4687d4cc-gn6n4   0/1     Pending   0          20s
+----
+
+. Examine Events
++
+[source,bash]
+----
+[student@workstation schedule-limit]$ oc get events --field-selector type=Warning
+LAST SEEN   TYPE      REASON             OBJECT                                  MESSAGE
+29s         Warning   FailedScheduling   pod/hello-demo-limit-5d4687d4cc-gn6n4   0/5 nodes are available: 5 Insufficient cpu.
+----
++
+.Too many resources required for container
+[IMPORTANT]
+====
+The container had too many resources requested. Adjust the hello-demo-limit.yaml to use less resources and apply the changes.
+====
+
+. Edit the Deployment Resource
++
+[source,bash]
+----
+[student@workstation schedule-limit]$ vim hello-demo-limit.yaml
+
+... output omitted ...
+
+spec:
+  containers:
+  - image: quay.io/redhattraining/hello-world-nginx:v1.0
+    name: hello-world-nginx
+    resources:
+      requests:
+        cpu: "2"
+        memory: 20Mi
+----
+
+. Apply resource configuration changes
++
+[source,bash]
+----
+[student@workstation schedule-limit]$ oc apply -f hello-demo-limit.yaml
+deployment.apps/hello-demo-limit configured
+----
+
+. Verify application and pod deployment status
++
+[source,bash]
+----
+[student@workstation schedule-limit]$ oc get pods
+NAME                                READY   STATUS    RESTARTS   AGE
+hello-demo-limit-687f76c5bf-djtqs   1/1     Running   0          45s
+----
+
+. Scale application to see load limits
++
+[source,bash]
+----
+[student@workstation schedule-limit]$ oc scale --replicas 3 deployment/hello-demo-limit
+deployment.extensions/hello-demo-limit scaled
+----
+
+. Verify application and pod deployment status
++
+[source,bash]
+----
+[student@workstation schedule-limit]$ oc get pods
+NAME                                READY   STATUS    RESTARTS   AGE
+hello-demo-limit-687f76c5bf-4lntc   0/1     Pending   0          24s
+hello-demo-limit-687f76c5bf-8fqqm   1/1     Running   0          24s
+hello-demo-limit-687f76c5bf-djtqs   1/1     Running   0          2m24s
+----
++
+.Examining Events
+[source,bash]
+----
+[student@workstation schedule-limit]$ oc get events --field-selector type=Warning
+LAST SEEN   TYPE      REASON             OBJECT                                  MESSAGE
+2m57s       Warning   FailedScheduling   pod/hello-demo-limit-5d4687d4cc-gn6n4   0/5 nodes are available: 5 Insufficient cpu.
+2m28s       Warning   FailedScheduling   pod/hello-demo-limit-5d4687d4cc-gn6n4   skip schedule deleting pod: limit-demo/hello-demo-limit-5d4687d4cc-gn6n4
+36s         Warning   FailedScheduling   pod/hello-demo-limit-687f76c5bf-4lntc   0/5 nodes are available: 1 node(s) had taints that the pod didn't tolerate, 4 Insufficient cpu
+----
+
+. Cleanup Environment
++
+[source,bash]
+----
+[student@workstation schedule-limit]$ oc delete project limit-demo
+project.project.openshift.io "limit-demo" deleted
+----
++
+[source,bash]
+----
+[student@workstation schedule-limit]$ lab schedule-limit finish
+----
+
 =====

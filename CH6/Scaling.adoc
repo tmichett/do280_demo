@@ -14,4 +14,184 @@
 .Scaling an Application - Demo
 =====
 
+.Setup Demo
+[TIP]
+====
+
+[source,bash]
+----
+[student@workstation Chapter6]$ lab schedule-scale start
+----
+
+[source,bash]
+----
+[student@workstation schedule-scale]$ cd /home/student/Demo/Chapter6/schedule-scale
+----
+
+====
+
+. Source the resource file and login to OCP
++
+[source,bash]
+----
+[student@workstation schedule-scale]$ source /usr/local/etc/ocp4.config
+
+[student@workstation schedule-scale]$ oc login -u admin -p ${RHT_OCP4_USER_PASSWD}
+Login successful.
+----
+
+
+. Create a new Project
++
+[source,bash]
+----
+[student@workstation schedule-scale]$ oc new-project scale-demo
+Now using project "scale-demo" on server "https://api.ocp-gdqpjexgnzgogxx200728.do280.rht-na.nextcle.com:6443".
+----
+
+. Modify the Application Resource File
++
+[source,bash]
+----
+[student@workstation schedule-scale]$ vim loadtest-demo.yaml
+
+... output omitted ...
+spec:
+  containers:
+  - image: quay.io/redhattraining/loadtest:v1.0
+    name: loadtest
+    resources:
+      requests:
+        cpu: "25m"
+        memory: 25Mi
+      limits:
+        cpu: "100m"
+        memory: 100Mi
+status: {}
+
+... output omitted ...
+----
+
+. Create an Application using the Resource File
++
+[source,bash]
+----
+[student@workstation schedule-scale]$ oc create --save-config -f loadtest-demo.yaml
+deployment.apps/loadtest created
+service/loadtest created
+route.route.openshift.io/loadtest created
+----
+
+. Verify application is running
++
+[source,bash]
+----
+[student@workstation schedule-scale]$ oc get pods
+NAME                        READY   STATUS    RESTARTS   AGE
+loadtest-5d9d5b566f-hdbw8   1/1     Running   0          96s
+----
+
+. Setup and configure an Autoscaler
++
+[source,bash]
+----
+[student@workstation schedule-scale]$ oc autoscale deployment/loadtest --min 1 --max 5 --cpu-percent 40
+horizontalpodautoscaler.autoscaling/loadtest autoscaled
+----
+
+. Look at Autoscaler
++
+[source,bash]
+----
+[student@workstation schedule-scale]$ oc get hpa
+NAME       REFERENCE             TARGETS   MINPODS   MAXPODS   REPLICAS   AGE
+loadtest   Deployment/loadtest   0%/40%    1         5         1          67s
+----
+
+. Obtain route to simulate load
++
+.Getting OCP Route
+[source,bash]
+----
+[student@workstation schedule-scale]$ oc get route/loadtest
+NAME       HOST/PORT                                                                     PATH   SERVICES   PORT   TERMINATION   WILDCARD
+loadtest   loadtest-scale-demo.apps.ocp-gdqpjexgnzgogxx200728.do280.rht-na.nextcle.com          loadtest   8080                 None
+----
++
+.Simulating Load
+[source,bash]
+----
+[student@workstation schedule-scale]$ curl -X GET http://loadtest-scale-demo.apps.ocp-gdqpjexgnzgogxx200728.do280.rht-na.nextcle.com/api/loadtest/v1/cpu/1
+----
+
+. Open new terminal and use *watch oc get hpa/loadtest*
++
+[source,bash]
+----
+Every 2.0s: oc get hpa/loadtest  workstation.lab.example.com: Wed Jul 29 16:48:49 2020
+
+NAME	   REFERENCE             TARGETS    MINPODS   MAXPODS   REPLICAS   AGE
+loadtest   Deployment/loadtest   268%/40%   1         5         1          3m53s
+----
+
+. Observe new pods
++
+[source,bash]
+----
+[student@workstation schedule-scale]$ oc get pods
+NAME                        READY   STATUS    RESTARTS   AGE
+loadtest-5d9d5b566f-94h2f   1/1     Running   0          30s
+loadtest-5d9d5b566f-cqzgh   1/1     Running   0          15s
+loadtest-5d9d5b566f-hdbw8   1/1     Running   0          8m
+loadtest-5d9d5b566f-hkvpt   1/1     Running   0          30s
+loadtest-5d9d5b566f-v2xb2   1/1     Running   0          30s
+----
+
+. Look at the HPA
++
+[source,bash]
+----
+Every 2.0s: oc get hpa/loadtest  workstation.lab.example.com: Wed Jul 29 16:50:41 2020
+
+NAME	   REFERENCE             TARGETS   MINPODS   MAXPODS   REPLICAS   AGE
+loadtest   Deployment/loadtest   91%/40%   1         5         5          5m45s
+----
+
+. Wait some time and observe that the replicas are back to 1
++
+[source,bash]
+----
+Every 2.0s: oc get hpa/loadtest  workstation.lab.example.com: Wed Jul 29 16:56:21 2020
+
+NAME	   REFERENCE             TARGETS   MINPODS   MAXPODS   REPLICAS   AGE
+loadtest   Deployment/loadtest   0%/40%    1         5         1          11m
+----
++
+[source,bash]
+----
+[student@workstation schedule-scale]$ oc get pods
+NAME                        READY   STATUS        RESTARTS   AGE
+loadtest-5d9d5b566f-94h2f   1/1     Terminating   0          7m17s
+loadtest-5d9d5b566f-cqzgh   1/1     Terminating   0          7m2s
+loadtest-5d9d5b566f-hdbw8   1/1     Running       0          14m
+loadtest-5d9d5b566f-hkvpt   1/1     Terminating   0          7m17s
+loadtest-5d9d5b566f-v2xb2   1/1     Terminating   0          7m17s
+
+[student@workstation schedule-scale]$ oc get pods
+NAME                        READY   STATUS    RESTARTS   AGE
+loadtest-5d9d5b566f-hdbw8   1/1     Running   0          15m
+----
+
+. Cleanup the project
++
+[source,bash]
+----
+[student@workstation ~]$ oc delete project scale-demo
+project.project.openshift.io "scale-demo" deleted
+----
++
+[source,bash]
+----
+[student@workstation ~]$ lab schedule-scale finish
+----
 =====

@@ -11,4 +11,4 @@
 
 == Describing Cluster Updates
 
-No Demos
+No Demos for this chapter.
