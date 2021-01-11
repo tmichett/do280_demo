@@ -25,7 +25,9 @@
 
 [source,bash]
 ----
-[student@workstation schedule-scale]$ cd /home/student/Demo/Chapter6/schedule-scale
+[student@workstation schedule-limit]$ cd /home/student/github/do280_demo/CH6/schedule-scale/
+
+[student@workstation schedule-scale]$
 ----
 
 ====
@@ -115,19 +117,20 @@ loadtest   Deployment/loadtest   0%/40%    1         5         1          67s
 ----
 [student@workstation schedule-scale]$ oc get route/loadtest
 NAME       HOST/PORT                                                                     PATH   SERVICES   PORT   TERMINATION   WILDCARD
-loadtest   loadtest-scale-demo.apps.ocp-gdqpjexgnzgogxx200728.do280.rht-na.nextcle.com          loadtest   8080                 None
+loadtest   loadtest-scale-demo.apps.ocp4.example.com          loadtest   8080                 None
 ----
 +
 .Simulating Load
 [source,bash]
 ----
-[student@workstation schedule-scale]$ curl -X GET http://loadtest-scale-demo.apps.ocp-gdqpjexgnzgogxx200728.do280.rht-na.nextcle.com/api/loadtest/v1/cpu/1
+[student@workstation schedule-scale]$  curl -X GET http://loadtest-scale-demo.apps.ocp4.example.com/api/loadtest/v1/cpu/1
 ----
 
 . Open new terminal and use *watch oc get hpa/loadtest*
 +
 [source,bash]
 ----
+[student@workstation ~]$ watch oc get hpa/loadtest
 Every 2.0s: oc get hpa/loadtest  workstation.lab.example.com: Wed Jul 29 16:48:49 2020
 
 NAME	   REFERENCE             TARGETS    MINPODS   MAXPODS   REPLICAS   AGE
