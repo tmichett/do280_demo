@@ -193,9 +193,17 @@ command terminated with exit code 130
 +
 .Network Policy Resources
 [IMPORTANT]
-=====
+====
 It is extremely important to implement the Network Policy on the correct project. Network Policies are implemented at a Project/Namespace level.
-=====
+
+Also switch to Github Project Folder
+
+[source,bash]
+----
+[student@workstation ~]$ cd ~/github/do280_demo/CH5/network-policy
+----
+
+====
 
 
 
@@ -230,4 +238,4 @@ networkpolicy.networking.k8s.io/deny-all-demo created
 ^C
 ----
 
-====
+=====
