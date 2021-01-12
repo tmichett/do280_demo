@@ -104,7 +104,7 @@ securitycontextconstraints.security.openshift.io/anyuid added to: ["system:servi
 +
 [source,bash]
 ----
-[student@workstation ~]$  oc set serviceaccount dc/gitlab-demo gitlab-svc
+[student@workstation ~]$  oc set serviceaccount deployment/gitlab-demo gitlab-svc
 deploymentconfig.apps.openshift.io/gitlab-demo serviceaccount updated
 ----
 +
